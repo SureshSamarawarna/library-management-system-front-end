@@ -3,9 +3,9 @@ const API_END_POINT = 'http://34.100.220.186:8080/lms/api';
 const pageSize = 8;
 let page = 1;
 
-getMembers();
+getBooks();
 
-function getMembers(query=`${$('#txt-search').val()}`){
+function getBooks(query=`${$('#txt-search').val()}`){
     /* (1) Initiate a XMLHttpRequest object */
     const http = new XMLHttpRequest();
 
@@ -14,35 +14,35 @@ function getMembers(query=`${$('#txt-search').val()}`){
         if (http.readyState === http.DONE){
             $("#loader").hide();
             if (http.status === 200){
-                const totalMembers = +http.getResponseHeader('X-Total-Count');
-                initPagination(totalMembers);
+                const totalBooks = +http.getResponseHeader('X-Total-Count');
+                initPagination(totalBooks);
 
-                const members = JSON.parse(http.responseText);
-                if (members.length === 0){
-                    $('#tbl-members').addClass('empty');
+                const books = JSON.parse(http.responseText);
+                if (books.length === 0){
+                    $('#tbl-books').addClass('empty');
                 }else{
-                    $('#tbl-members').removeClass('empty');
+                    $('#tbl-books').removeClass('empty');
                 }
-                $('#tbl-members tbody tr').remove();
-                members.forEach((member, index) => {
+                $('#tbl-books tbody tr').remove();
+                books.forEach((book, index) => {
                     const rowHtml = `
                     <tr tabindex="0">
-                        <td>${member.id}</td>
-                        <td>${member.name}</td>
-                        <td>${member.address}</td>
-                        <td>${member.contact}</td>
+                        <td>${book.isbn}</td>
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${book.copies}</td>
                     </tr>
                     `;
-                    $('#tbl-members tbody').append(rowHtml);
+                    $('#tbl-books tbody').append(rowHtml);
                 });
             }else{
-                showToast('Failed to load members, try refreshing again');
+                showToast('Failed to load books, try refreshing again');
             }
         }
     });
 
     /* (3) Open the request */
-    http.open('GET', `${API_END_POINT}/members?size=${pageSize}&page=${page}&q=${query}`, true);
+    http.open('GET', `${API_END_POINT}/books?size=${pageSize}&page=${page}&q=${query}`, true);
 
     /* (4) Set additional infromation for the request */
 
@@ -50,12 +50,12 @@ function getMembers(query=`${$('#txt-search').val()}`){
     http.send();
 }
 
-function initPagination(totalMembers){
-    const totalPages = Math.ceil(totalMembers / pageSize);
+function initPagination(totalBooks){
+    const totalPages = Math.ceil(totalBooks / pageSize);
     if (page > totalPages) {
         page = totalPages;
         if (page === 0) page = 1;
-        getMembers();
+        getBooks();
         return;
     }
 
@@ -84,14 +84,14 @@ $('#pagination > .pagination').click((eventData)=> {
         const activePage = ($(elm).text());
         if (activePage === 'Next'){
             page++;
-            getMembers();
+            getBooks();
         }else if (activePage === 'Previous'){
             page--;
-            getMembers();
+            getBooks();
         }else{
             if (page !== activePage){
                 page = +activePage;
-                getMembers();
+                getBooks();
             }
         }
     }
@@ -99,10 +99,10 @@ $('#pagination > .pagination').click((eventData)=> {
 
 $('#txt-search').on('input', () => {
     page = 1;
-    getMembers();
+    getBooks();
 });
 
-$('#tbl-members tbody').keyup((eventData)=>{
+$('#tbl-books tbody').keyup((eventData)=>{
     if (eventData.which === 38){
         const elm = document.activeElement.previousElementSibling;
         if (elm instanceof HTMLTableRowElement){
@@ -127,48 +127,56 @@ $(document).keydown((eventData)=>{
     }
 });
 
-$("#btn-new-member").click(()=> {
-    const frmMemberDetail = new
-    bootstrap.Modal(document.getElementById('frm-member-detail'));
+$("#btn-new-book").click(()=> {
+    const frmBookDetail = new
+    bootstrap.Modal(document.getElementById('frm-book-detail'));
 
-    $("#txt-id, #txt-name, #txt-address, #txt-contact").attr('disabled', false).val('');
+    $("#txt-isbn, #txt-title, #txt-author, #txt-copies").attr('disabled', false).val('');
+    $("#txt-copies").val(1);
 
-    $("#frm-member-detail")
+    $("#frm-book-detail")
         .removeClass('edit')
         .addClass('new')
         .on('shown.bs.modal', ()=> {
-            $("#txt-name").focus();
+            setTimeout(()=>
+                $("#txt-isbn").focus(),500);
         });
 
-    frmMemberDetail.show();
+    frmBookDetail.show();
 });
 
-$("#frm-member-detail form").submit((eventData)=> {
+$("#frm-book-detail form").submit((eventData)=> {
     eventData.preventDefault();
     $("#btn-save").click();
 });
 
 $("#btn-save").click(async ()=> {
 
-    const name = $("#txt-name").val();
-    const address = $("#txt-address").val();
-    const contact = $("#txt-contact").val();
+    const isbn = $("#txt-isbn").val();
+    const title = $("#txt-title").val();
+    const author = $("#txt-author").val();
+    const copies = +$("#txt-copies").val();
     let validated = true;
 
-    $("#txt-name, #txt-address, #txt-contact").removeClass('is-invalid');
+    $("#txt-isbn, #txt-title, #txt-author, #txt-copies").removeClass('is-invalid');
 
-    if (!/^\d{3}-\d{7}$/.test(contact)){
-        $("#txt-contact").addClass('is-invalid').select().focus();
+    if (copies < 1){
+        $("#txt-copies").addClass('is-invalid').select().focus();
         validated = false;
     }
 
-    if (!/^[A-Za-z0-9|,.:;#\/\\ -]+$/.test(address)){
-        $("#txt-address").addClass('is-invalid').select().focus();
+    if (!/^[A-Za-z ]+$/.test(author)){
+        $("#txt-author").addClass('is-invalid').select().focus();
         validated = false;
     }
 
-    if (!/^[A-Za-z ]+$/.test(name)){
-        $("#txt-name").addClass('is-invalid').select().focus();
+    if (!/^.+$/.test(title)){
+        $("#txt-title").addClass('is-invalid').select().focus();
+        validated = false;
+    }
+
+    if (!/^([0-9][0-9\\-]*[0-9])$/.test(isbn)){
+        $("#txt-isbn").addClass('is-invalid').select().focus();
         validated = false;
     }
 
@@ -176,20 +184,22 @@ $("#btn-save").click(async ()=> {
 
     try{
         $("#overlay").removeClass("d-none");
-        const {id} = await saveMember();
+        await saveBook();
         $("#overlay").addClass("d-none");
-        showToast(`Member has been saved successfully with the ID: ${id}`, 'success');
-        $("#txt-name, #txt-address, #txt-contact").val("");
-        $("#txt-name").focus();
+        showToast(`Book has been saved successfully`, 'success');
+        $("#txt-isbn, #txt-title, #txt-author, #txt-copies").val("");
+        $("#txt-copies").val(1);
+        $("#txt-isbn").focus();
     }catch(e){
+        console.log(e);
         $("#overlay").addClass("d-none");
-        showToast("Failed to save the member, try again", 'error');
-        $("#txt-name").focus();
+        showToast("Failed to save the book, try again", 'error');
+        $("#txt-isbn").focus();
     }
 
 });
 
-function saveMember(){
+function saveBook(){
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
@@ -203,16 +213,17 @@ function saveMember(){
             }
         });
 
-        xhr.open('POST', `${API_END_POINT}/members`, true);
+        xhr.open('POST', `${API_END_POINT}/books`, true);
         xhr.setRequestHeader('Content-Type', 'application/json');
 
-        const member = {
-            name: $("#txt-name").val(),
-            address: $("#txt-address").val(),
-            contact: $("#txt-contact").val()
+        const book = {
+            isbn: $("#txt-isbn").val(),
+            title: $("#txt-title").val(),
+            author: $("#txt-author").val(),
+            copies: +$("#txt-copies").val()
         }
 
-        xhr.send(JSON.stringify(member));
+        xhr.send(JSON.stringify(book));
 
     });
 }
@@ -237,11 +248,11 @@ function showToast(msg, msgType = 'warning'){
     $("#toast").toast('show');
 }
 
-$("#frm-member-detail").on('hidden.bs.modal', ()=> {
-    getMembers();
+$("#frm-book-detail").on('hidden.bs.modal', ()=> {
+    getBooks();
 });
 
-$('#tbl-members tbody').click(({target})=> {
+$('#tbl-books tbody').click(({target})=> {
     if (!target) return;
     let rowElm = target.closest('tr');
     // if (target instanceof HTMLTableRowElement) {
@@ -252,32 +263,32 @@ $('#tbl-members tbody').click(({target})=> {
     //     return;
     // }
 
-    getMemeberDetails($(rowElm.cells[0]).text());
+    getBookDetails($(rowElm.cells[0]).text());
 });
 
-async function getMemeberDetails(memberId){
+async function getBookDetails(isbn){
     try{
-        const response = await fetch(`${API_END_POINT}/members/${memberId}`)
+        const response = await fetch(`${API_END_POINT}/books/${isbn}`)
         if (response.ok){
-            const member = await response.json();
+            const book = await response.json();
 
-            const frmMemberDetail = new
-            bootstrap.Modal(document.getElementById('frm-member-detail'));
+            const frmBookDetail = new
+            bootstrap.Modal(document.getElementById('frm-book-detail'));
 
-            $("#frm-member-detail")
+            $("#frm-book-detail")
                 .removeClass('new').removeClass('edit');
 
-            $("#txt-id").attr('disabled', 'true').val(member.id);
-            $("#txt-name").attr('disabled', 'true').val(member.name);
-            $("#txt-address").attr('disabled', 'true').val(member.address);
-            $("#txt-contact").attr('disabled', 'true').val(member.contact);
+            $("#txt-isbn").attr('disabled', 'true').val(book.isbn);
+            $("#txt-title").attr('disabled', 'true').val(book.title);
+            $("#txt-author").attr('disabled', 'true').val(book.author);
+            $("#txt-copies").attr('disabled', 'true').val(book.copies);
 
-            frmMemberDetail.show();
+            frmBookDetail.show();
         }else{
             throw new Error(response.status);
         }
     }catch(error){
-        showToast('Failed to fetch the member details');
+        showToast('Failed to fetch the book details');
     }
 
 
@@ -310,49 +321,37 @@ async function getMemeberDetails(memberId){
 }
 
 $("#btn-edit").click(()=> {
-    $("#frm-member-detail").addClass('edit');
-    $("#txt-name, #txt-address, #txt-contact").attr('disabled', false);
-});
-
-$("#btn-delete").click(async ()=> {
-    $("#overlay").removeClass("d-none");
-    try{
-        const response = await fetch(`${API_END_POINT}/members/${$('#txt-id').val()}`,
-            {method: 'DELETE'});
-        if (response.status === 204){
-            showToast('Member has been deleted successfully', 'success');
-            $("#btn-close").click();
-        }else{
-            throw new Error(response.status);
-        }
-    }catch(error){
-        showToast("Failed to delete the member, try again!");
-    }finally{
-        $("#overlay").addClass("d-none");
-    }
+    $("#frm-book-detail").addClass('edit');
+    $("#txt-title, #txt-author, #txt-copies").attr('disabled', false);
 });
 
 $("#btn-update").click(async ()=> {
 
-    const name = $("#txt-name").val();
-    const address = $("#txt-address").val();
-    const contact = $("#txt-contact").val();
+    const isbn = $("#txt-isbn").val();
+    const title = $("#txt-title").val();
+    const author = $("#txt-author").val();
+    const copies = +$("#txt-copies").val();
     let validated = true;
 
-    $("#txt-name, #txt-address, #txt-contact").removeClass('is-invalid');
+    $("#txt-isbn, #txt-title, #txt-author, #txt-copies").removeClass('is-invalid');
 
-    if (!/^\d{3}-\d{7}$/.test(contact)){
-        $("#txt-contact").addClass('is-invalid').select().focus();
+    if (copies < 1){
+        $("#txt-copies").addClass('is-invalid').select().focus();
         validated = false;
     }
 
-    if (!/^[A-Za-z0-9|,.:;#\/\\ -]+$/.test(address)){
-        $("#txt-address").addClass('is-invalid').select().focus();
+    if (!/^[A-Za-z ]+$/.test(author)){
+        $("#txt-author").addClass('is-invalid').select().focus();
         validated = false;
     }
 
-    if (!/^[A-Za-z ]+$/.test(name)){
-        $("#txt-name").addClass('is-invalid').select().focus();
+    if (!/^.+$/.test(title)){
+        $("#txt-title").addClass('is-invalid').select().focus();
+        validated = false;
+    }
+
+    if (!/^([0-9][0-9\\-]*[0-9])$/.test(isbn)){
+        $("#txt-isbn").addClass('is-invalid').select().focus();
         validated = false;
     }
 
@@ -360,24 +359,23 @@ $("#btn-update").click(async ()=> {
 
     $("#overlay").removeClass('d-none');
     try{
-        const response = await fetch(`${API_END_POINT}/members/${$("#txt-id").val()}`,
+        const response = await fetch(`${API_END_POINT}/books/${$("#txt-isbn").val()}`,
             {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    id: $("#txt-id").val(),
-                    name, address, contact
+                    isbn, title, author, copies
                 })
             });
         if (response.status === 204){
-            showToast('Member has been updated successfully', 'success');
+            showToast('Book has been updated successfully', 'success');
         }else{
             throw new Error(response.status);
         }
     }catch(error){
-        showToast('Failed to update the member, try again!');
+        showToast('Failed to update the book, try again!');
     }finally{
         $("#overlay").addClass('d-none');
     }
